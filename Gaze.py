@@ -93,7 +93,8 @@ def main(dataset):
                     else:
                         input_data[key] = Variable(input_data[key]).type(torch.FloatTensor)
             img_head = input_data['head_image']
-            img_eye = input_data['eye_image']
+            img_leye = input_data['leye_image']
+            img_reye = input_data['reye_image']
             head_gt = input_data['head_lola']
             gaze_gt = input_data['gaze_lola']
             eye_gt = input_data['eye_lola']
@@ -101,7 +102,7 @@ def main(dataset):
             head_gt = (head_gt + 90)/180
             gaze_gt = (gaze_gt + 90)/180
             eye_gt = (eye_gt + 90)/180
-            output = model(img_head,img_eye)
+            output = model(img_head,img_leye,img_reye)
             loss_fn = SmoothL1Loss()
             loss_head = loss_fn(output['head'],head_gt)
             loss_eye = loss_fn(output['eye'],eye_gt)
