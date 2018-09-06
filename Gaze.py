@@ -17,8 +17,8 @@ from torchvision import transforms
 from torch.utils.data.sampler import SubsetRandomSampler
 
 
-from gazedataset import GazeDataset
-
+from gazedataset import *
+from gazenet import *
 def get_train_valid_loader(dataset,
                             batch_size,
                             seed = 0,
