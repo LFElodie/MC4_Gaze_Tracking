@@ -160,6 +160,12 @@ def main(dataset):
             phase = "train"
             train_loader,valid_loader = get_train_valid_loader(gaze_set,16*GPU_COUNT)
             dataiterator = iter(train_loader)
+            if not os.path.exists("ckpt/"+str(learning_rate)):
+                os.makedirs("ckpt/"+str(learning_rate))
+            torch.save({"model":model.module.state_dict(),"optim":optimizer.state_dict()},\
+                "./ckpt/{}/train_{}_epoch.pth".format(learning_rate,1+epoch))
+            gc.collect()
+
 
 
 def get_test_loader(data_dir,

@@ -24,8 +24,7 @@ class GazeNet(nn.Module):
     def __init__(self):
         super(GazeNet, self).__init__()
         self.face_net = resnext50(4,32)
-        self.leye_net = resnext50(4,32)
-        self.reye_net = resnext50(4,32)
+        self.eye_net = resnext50(4,32)
 
     def calc_gaze_lola(self,head,eye):
         head_lo = head[:,0]
@@ -52,8 +51,8 @@ class GazeNet(nn.Module):
     def forward(self,img_face,img_leye,img_reye):
         return_dict = {}
         head = self.face_net(img_face)
-        leye = self.leye_net(img_leye)
-        reye = self.reye_net(img_reye)
+        leye = self.eye_net(img_leye)
+        reye = self.eye_net(img_reye)
         eye = (leye + reye) / 2
         #print("head",head.shape)
         #print("eye",eye.shape)
