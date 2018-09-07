@@ -52,9 +52,9 @@ class GazeNet(nn.Module):
     def forward(self,img_face,img_leye,img_reye):
         return_dict = {}
         head = self.face_net(img_face)
-        leye = self.eye_net(img_leye)
-        yeye = self.eye_net(img_yeye)
-        eye = (leye + yeye) / 2
+        leye = self.leye_net(img_leye)
+        reye = self.reye_net(img_reye)
+        eye = (leye + reye) / 2
         #print("head",head.shape)
         #print("eye",eye.shape)
         gaze_lola = self.calc_gaze_lola(head,eye)

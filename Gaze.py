@@ -144,7 +144,8 @@ def main(dataset):
                 head_gt = (head_gt + 90)/180
                 gaze_gt = (gaze_gt + 90)/180
                 eye_gt = (eye_gt + 90)/180
-                output = model(img_head,img_eye)
+                output = model(img_head,img_leye,img_reye)
+                
                 loss_fn = SmoothL1Loss()
                 loss_head = loss_fn(output['head'],head_gt).item()
                 loss_eye = loss_fn(output['eye'],eye_gt).item()
