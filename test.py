@@ -58,6 +58,8 @@ def output_predict(dataloader,output_path,pretrained_model = None):
         img_reye = input_data['reye_image']
 
         output = model(img_head,img_leye,img_reye)
+        if output is None:
+            raise Exception
         gaze_lola = output["gaze"].data.cpu().numpy()
         gaze_lola = gaze_lola*180 - 90
         img_name_batch = input_data['img_name']

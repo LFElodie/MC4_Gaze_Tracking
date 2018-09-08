@@ -85,9 +85,6 @@ class GazeDataset(Dataset):
     def __getitem__(self, idx):
         head_image = cv2.imread(os.path.join(
             self.data_dir, "head", self.img_list[idx]), cv2.IMREAD_GRAYSCALE)
-        # 头部图像还包含了大量背景区域，需要做居中裁剪
-        mid_x, mid_y = head_image.shape[0] // 2, head_image.shape[1] // 2
-        head_image = head_image[mid_x - 112:mid_x + 112, mid_y - 112:mid_y + 112]
         leye_image = cv2.imread(os.path.join(
             self.data_dir, "l_eye", self.img_list[idx]), cv2.IMREAD_GRAYSCALE)
         reye_image = cv2.imread(os.path.join(

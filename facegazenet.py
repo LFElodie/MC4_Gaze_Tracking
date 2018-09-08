@@ -17,13 +17,20 @@ from torchvision import transforms
 from torch.utils.data.sampler import SubsetRandomSampler
 
 from resnext import *
-class GazeNet(nn.Module):
+import face_alignment
+from face_alignment.models import *
+
+class FaceGazeNet(nn.Module):
     """
     The end_to_end model of Gaze Prediction Training
     """
     def __init__(self):
-        super(GazeNet, self).__init__()
-        self.face_net = resnext50(4,32)
+        super(FaceGazeNet, self).__init__()
+        self.fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._3D, network_size = 4,enable_cuda=True, flip_input=False,use_cnn_face_detector=True)
+        self.fc1 = nn.Linear(68*3, 64)
+        self.fc2 = nn.Linear(64, 2)
+
+        # self.face_net = resnext50(4,32)
         self.eye_net = resnext50(4,32)
 
     def calc_gaze_lola(self,head,eye):
@@ -48,21 +55,28 @@ class GazeNet(nn.Module):
         gaze_la = gaze_la.unsqueeze(1)
         gaze_lola = torch.cat((gaze_lo,gaze_la),1)
         return gaze_lola
-        
+
     def forward(self,img_face,img_leye,img_reye):
         return_dict = {}
-        head = self.face_net(img_face)
-        leye = self.eye_net(img_leye)
-        reye = self.eye_net(img_reye)
-        eye = (leye + reye) / 2
-        #print("head",head.shape)
-        #print("eye",eye.shape)
-        gaze_lola = self.calc_gaze_lola(head,eye)
-        #对头部，眼睛和视线朝向的角度做归一化到[0,1]范围内
-        head = (head + 90)/180
-        eye = (eye + 90)/180
-        gaze_lola = (gaze_lola + 90)/180
-        return_dict['head'] = head
-        return_dict['eye'] = eye
-        return_dict['gaze'] = gaze_lola
-        return return_dict
+        preds = self.fa.get_landmarks(img_face)[-1]
+        if preds is not None:
+            head_features = preds.reshape(1,-1)
+            head_features = self.fc1(head_features)
+            head = self.fc2(head_features)
+            # head = self.face_net(img_face)
+            leye = self.eye_net(img_leye)
+            reye = self.eye_net(img_reye)
+            eye = (leye + reye) / 2
+            #print("head",head.shape)
+            #print("eye",eye.shape)
+            gaze_lola = self.calc_gaze_lola(head,eye)
+            #对头部，眼睛和视线朝向的角度做归一化到[0,1]范围内
+            head = (head + 90)/180
+            eye = (eye + 90)/180
+            gaze_lola = (gaze_lola + 90)/180
+            return_dict['head'] = head
+            return_dict['eye'] = eye
+            return_dict['gaze'] = gaze_lola
+            return return_dict
+        else:
+            return None

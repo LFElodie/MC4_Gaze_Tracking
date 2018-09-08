@@ -18,7 +18,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 
 
 from gazedataset import *
-from gazenet import *
+from facegazenet import *
 def get_train_valid_loader(dataset,
                             batch_size,
                             seed = 0,
@@ -56,7 +56,7 @@ def main(dataset,pretrained_model):
     
     epoch = 0#one epoch is to iterate over the entire training set
     steps = 200000
-    model = GazeNet()
+    model = FaceGazeNet()
     if pretrained_model:
         try:
             pt = torch.load(pretrained_model)
@@ -116,6 +116,8 @@ def main(dataset,pretrained_model):
             gaze_gt = (gaze_gt + 90)/180
             eye_gt = (eye_gt + 90)/180
             output = model(img_head,img_leye,img_reye)
+            if output is None:
+                continue
             loss_fn = SmoothL1Loss()
             loss_head = loss_fn(output['head'],head_gt)
             loss_eye = loss_fn(output['eye'],eye_gt)
@@ -196,57 +198,6 @@ def main(dataset,pretrained_model):
                         "epoch":epoch},\
                 "./ckpt/{}_epoch.pth".format(epoch))
             gc.collect()
-
-
-
-def get_test_loader(data_dir,
-    batch_size=1,
-    shuffle=False,
-    num_workers=1,
-    pin_memory=False):
-    dataset = GazeDataset(data_dir,"test")
-    data_loader = torch.utils.data.DataLoader(
-    dataset, batch_size=batch_size, shuffle=shuffle,
-    num_workers=num_workers, pin_memory=pin_memory,
-    ) 
-    return data_loader
-
-def output_predict(dataloader,output_path,pretrained_model = None):
-    #test mode
-    model = GazeNet()
-    if pretrained_model:
-        pt = torch.load(pretrained_model)
-        model.load_state_dict(pt["model"])
-    os.environ['CUDA_VISIBLE_DEVICES'] = "0"#use one gpu for testing?
-    use_cuda = torch.cuda.is_available()
-    if use_cuda:
-        model = model.cuda()
-    dataiterator = iter(dataloader)
-    pred = {}
-    while True:
-        try:
-            input_data = next(dataiterator)
-        except StopIteration:
-            break
-        for key in input_data:
-            if key!= "img_name":
-                if use_cuda:
-                    input_data[key] = Variable(input_data[key]).type(torch.cuda.FloatTensor)
-                else:
-                    input_data[key] = Variable(input_data[key]).type(torch.FloatTensor)
-        img_head = input_data['head_image']
-        img_eye = input_data['eye_image']
-        output = model(img_head,img_eye)
-        gaze_lola = output["gaze"].data.cpu().numpy()
-        gaze_lola = gaze_lola*180 - 90
-        img_name_batch = input_data['img_name']
-        for idx,img_name in enumerate(img_name_batch):
-            pred[img_name] = gaze_lola[idx]
-    with open(output_path,"w") as f:
-        for k,v in pred.items():
-            f.write(k.split(".")[0]+"\n")
-            f.write("%0.3f\n" % v[0])
-            f.write("%0.3f\n" % v[1])
 
 
 
