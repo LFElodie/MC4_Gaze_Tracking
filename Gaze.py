@@ -63,7 +63,7 @@ def main(dataset,pretrained_model):
             model.load_state_dict(pt["model"])
             epoch = pt['epoch']
             print('load pretrained model success')
-        else:
+        except:
             print('load pretrained faied')
     else:
         print('train from scratch')
