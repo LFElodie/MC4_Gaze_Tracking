@@ -53,16 +53,24 @@ def get_train_valid_loader(dataset,
 def main(dataset,pretrained_model):
     os.environ['CUDA_VISIBLE_DEVICES'] = "4,5,6,7"#8 gpus per node
     use_cuda = torch.cuda.is_available()
+    
+    epoch = 0#one epoch is to iterate over the entire training set
+    steps = 200000
     model = GazeNet()
     if pretrained_model:
-        pt = torch.load(pretrained_model)
-        model.load_state_dict(pt["model"])
-        print('load pretrained model success')
+        try:
+            pt = torch.load(pretrained_model)
+            model.load_state_dict(pt["model"])
+            epoch = pt['epoch']
+            print('load pretrained model success')
+        else:
+            print('load pretrained faied')
+    else:
+        print('train from scratch')
     if use_cuda:
         model = nn.DataParallel(model).cuda()
     GPU_COUNT = torch.cuda.device_count()
-    epoch = 0#one epoch is to iterate over the entire training set
-    steps = 200000
+
     print("Training Starts!")
     phase = "train"
     train_loader,valid_loader = get_train_valid_loader(dataset,8*GPU_COUNT)
@@ -73,7 +81,7 @@ def main(dataset,pretrained_model):
             #train mode
             #define optimizer
             if epoch == 0:
-                learning_rate = 0.01
+                learning_rate = 0.005
                 optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate,momentum=0.9,weight_decay=5e-4)
             elif epoch == 5:
                 learning_rate = 0.001
@@ -99,6 +107,7 @@ def main(dataset,pretrained_model):
             img_head = input_data['head_image']
             img_leye = input_data['leye_image']
             img_reye = input_data['reye_image']
+
             head_gt = input_data['head_lola']
             gaze_gt = input_data['gaze_lola']
             eye_gt = input_data['eye_lola']
@@ -119,11 +128,16 @@ def main(dataset,pretrained_model):
             if (step+1)%1000==0:
                 if not os.path.exists("ckpt/"+str(learning_rate)):
                     os.makedirs("ckpt/"+str(learning_rate))
-                torch.save({"model":model.module.state_dict(),"optim":optimizer.state_dict()},\
-                    "./ckpt/{}/train_{}_step.pth".format(learning_rate,1+step))
-                gc.collect()
+                torch.save({
+                    "model":model.module.state_dict(),
+                    "optim":optimizer.state_dict(),
+                    "epoch":epoch},\
+                    "./ckpt/{}/{}_step.pth".format(learning_rate,1+step))
+                gc.collect() 
             total_loss.backward()
             optimizer.step()
+               
+
         else:
             #val mode
             print("###one training epoch ends. Now validation###")
@@ -164,16 +178,23 @@ def main(dataset,pretrained_model):
                 valid_head.append(loss_head)
                 valid_eye.append(loss_eye)
                 valid_total.append(loss_head + loss_eye + loss_gaze)
+            print("###################epoch {}####################".format(epoch))
             print("head: {:.5f} eye: {:.5f} gaze: {:.5f} total: {:.5f}"\
                 .format(np.mean(valid_head),np.mean(valid_eye),np.mean(valid_gaze),np.mean(valid_total)))
-            print("epoch {}#########################################".format(epoch))
+            print("#################################################")
+            print()
+            
             phase = "train"
             train_loader,valid_loader = get_train_valid_loader(gaze_set,8*GPU_COUNT)
             dataiterator = iter(train_loader)
+
+            
             if not os.path.exists("ckpt/"+str(learning_rate)):
                 os.makedirs("ckpt/"+str(learning_rate))
-            torch.save({"model":model.module.state_dict(),"optim":optimizer.state_dict()},\
-                "./ckpt/{}/{}_epoch.pth".format(learning_rate,epoch))
+            torch.save({"model":model.module.state_dict(),
+                        "optim":optimizer.state_dict(),
+                        "epoch":epoch},\
+                "./ckpt/{}_epoch.pth".format(epoch))
             gc.collect()
 
 
@@ -249,8 +270,8 @@ if __name__ == "__main__":
     #pretrained_model = "./ckpt/0.005/11_epoch.pth"
     pretrained_model=None
     main(gaze_set,pretrained_model)
-    test_data_dir = "/data/mc_data/MC4/test"
-    output_path = "./pred.txt"
-    model_path = "./ckpt/0.005/train_1000_step.pth"
-    test_loader = get_test_loader(test_data_dir)
-    output_predict(test_loader,output_path,model_path)
+    # test_data_dir = "/data/mc_data/MC4/test"
+    # output_path = "./pred.txt"
+    # model_path = "./ckpt/0.005/train_1000_step.pth"
+    # test_loader = get_test_loader(test_data_dir)
+    # output_predict(test_loader,output_path,model_path)

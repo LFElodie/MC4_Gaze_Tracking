@@ -48,6 +48,7 @@ class GazeNet(nn.Module):
         gaze_la = gaze_la.unsqueeze(1)
         gaze_lola = torch.cat((gaze_lo,gaze_la),1)
         return gaze_lola
+        
     def forward(self,img_face,img_leye,img_reye):
         return_dict = {}
         head = self.face_net(img_face)
