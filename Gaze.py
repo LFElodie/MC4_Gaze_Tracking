@@ -50,10 +50,14 @@ def get_train_valid_loader(dataset,
 
 
 
-def main(dataset):
-    os.environ['CUDA_VISIBLE_DEVICES'] = "0,1,2,3,4,5,6,7"#8 gpus per node
+def main(dataset,pretrained_model):
+    os.environ['CUDA_VISIBLE_DEVICES'] = "4,5,6,7"#8 gpus per node
     use_cuda = torch.cuda.is_available()
     model = GazeNet()
+    if pretrained_model:
+        pt = torch.load(pretrained_model)
+        model.load_state_dict(pt["model"])
+        print('load pretrained model success')
     if use_cuda:
         model = nn.DataParallel(model).cuda()
     GPU_COUNT = torch.cuda.device_count()
@@ -61,7 +65,7 @@ def main(dataset):
     steps = 200000
     print("Training Starts!")
     phase = "train"
-    train_loader,valid_loader = get_train_valid_loader(dataset,16*GPU_COUNT)
+    train_loader,valid_loader = get_train_valid_loader(dataset,8*GPU_COUNT)
     dataiterator = iter(train_loader)
     start_time = time.time()
     for step in range(steps):
@@ -69,16 +73,16 @@ def main(dataset):
             #train mode
             #define optimizer
             if epoch == 0:
-                learning_rate = 0.1
+                learning_rate = 0.01
                 optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate,momentum=0.9,weight_decay=5e-4)
-            elif epoch == 10000:
-                learning_rate = 0.1
+            elif epoch == 5:
+                learning_rate = 0.001
                 optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate,momentum=0.9,weight_decay=5e-4)
-            elif epoch == 20000:
-                learning_rate = 0.1
+            elif epoch == 10:
+                learning_rate = 0.0005
                 optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate,momentum=0.9,weight_decay=5e-4)
-            elif epoch == 25000:
-                learning_rate = 0.1
+            elif epoch == 15:
+                learning_rate = 0.0001
                 optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate,momentum=0.9,weight_decay=5e-4)
             optimizer.zero_grad()
             try:
@@ -93,7 +97,8 @@ def main(dataset):
                     else:
                         input_data[key] = Variable(input_data[key]).type(torch.FloatTensor)
             img_head = input_data['head_image']
-            img_eye = input_data['eye_image']
+            img_leye = input_data['leye_image']
+            img_reye = input_data['reye_image']
             head_gt = input_data['head_lola']
             gaze_gt = input_data['gaze_lola']
             eye_gt = input_data['eye_lola']
@@ -101,7 +106,7 @@ def main(dataset):
             head_gt = (head_gt + 90)/180
             gaze_gt = (gaze_gt + 90)/180
             eye_gt = (eye_gt + 90)/180
-            output = model(img_head,img_eye)
+            output = model(img_head,img_leye,img_reye)
             loss_fn = SmoothL1Loss()
             loss_head = loss_fn(output['head'],head_gt)
             loss_eye = loss_fn(output['eye'],eye_gt)
@@ -140,10 +145,17 @@ def main(dataset):
                             input_data[key] = Variable(input_data[key]).type(torch.cuda.FloatTensor)
                         else:
                             input_data[key] = Variable(input_data[key]).type(torch.FloatTensor)
+                img_head = input_data['head_image']
+                img_leye = input_data['leye_image']
+                img_reye = input_data['reye_image']
+                head_gt = input_data['head_lola']
+                gaze_gt = input_data['gaze_lola']
+                eye_gt = input_data['eye_lola']
                 head_gt = (head_gt + 90)/180
                 gaze_gt = (gaze_gt + 90)/180
                 eye_gt = (eye_gt + 90)/180
-                output = model(img_head,img_eye)
+                output = model(img_head,img_leye,img_reye)
+                
                 loss_fn = SmoothL1Loss()
                 loss_head = loss_fn(output['head'],head_gt).item()
                 loss_eye = loss_fn(output['eye'],eye_gt).item()
@@ -154,10 +166,16 @@ def main(dataset):
                 valid_total.append(loss_head + loss_eye + loss_gaze)
             print("head: {:.5f} eye: {:.5f} gaze: {:.5f} total: {:.5f}"\
                 .format(np.mean(valid_head),np.mean(valid_eye),np.mean(valid_gaze),np.mean(valid_total)))
-            print("#############################################")
+            print("epoch {}#########################################".format(epoch))
             phase = "train"
-            train_loader,valid_loader = get_train_valid_loader(gaze_set,16*GPU_COUNT)
+            train_loader,valid_loader = get_train_valid_loader(gaze_set,8*GPU_COUNT)
             dataiterator = iter(train_loader)
+            if not os.path.exists("ckpt/"+str(learning_rate)):
+                os.makedirs("ckpt/"+str(learning_rate))
+            torch.save({"model":model.module.state_dict(),"optim":optimizer.state_dict()},\
+                "./ckpt/{}/{}_epoch.pth".format(learning_rate,epoch))
+            gc.collect()
+
 
 
 def get_test_loader(data_dir,
@@ -228,9 +246,11 @@ if __name__ == "__main__":
 
 
     gaze_set = GazeDataset('/data/mc_data/MC4/train',"train",transform)
-    main(gaze_set)
+    #pretrained_model = "./ckpt/0.005/11_epoch.pth"
+    pretrained_model=None
+    main(gaze_set,pretrained_model)
     test_data_dir = "/data/mc_data/MC4/test"
     output_path = "./pred.txt"
-    model_path = "./ckpt/0.1/train_1000_step.pth"
+    model_path = "./ckpt/0.005/train_1000_step.pth"
     test_loader = get_test_loader(test_data_dir)
     output_predict(test_loader,output_path,model_path)

@@ -92,16 +92,24 @@ class GazeDataset(Dataset):
             self.data_dir, "l_eye", self.img_list[idx]), cv2.IMREAD_GRAYSCALE)
         reye_image = cv2.imread(os.path.join(
             self.data_dir, "r_eye", self.img_list[idx]), cv2.IMREAD_GRAYSCALE)
-        eye_image = leye_image if np.random.rand() < 0.5 else reye_image
+        # eye_image = leye_image if np.random.rand() < 0.5 else reye_image
         head_image = image_normalize(head_image)
-        eye_image = image_normalize(eye_image)
+        # eye_image = image_normalize(eye_image)
+
+        leye_image = image_normalize(leye_image)
+        reye_image = image_normalize(reye_image)
+
         if self.mode == "train":
             head_lola = self.head_label[self.img_list[idx]]
             eye_lola = self.eye_label[self.img_list[idx]]
             gaze_lola = self.gaze_label[self.img_list[idx]]
+            # sample = {'img_name': self.img_list[idx], 
+            #             'head_image': head_image, 'eye_image': eye_image, 'head_lola': head_lola, 'eye_lola': eye_lola, 'gaze_lola': gaze_lola}
             sample = {'img_name': self.img_list[idx], 
-                        'head_image': head_image, 'eye_image': eye_image, 'head_lola': head_lola, 'eye_lola': eye_lola, 'gaze_lola': gaze_lola}
+                        'head_image': head_image, 'leye_image': leye_image, 'reye_image': reye_image, 'head_lola': head_lola, 'eye_lola': eye_lola, 'gaze_lola': gaze_lola}
         else:
+            # sample = {'img_name': self.img_list[idx],
+            #           'head_image': head_image, 'eye_image': eye_image}
             sample = {'img_name': self.img_list[idx],
-                      'head_image': head_image, 'eye_image': eye_image}
+                      'head_image': head_image, 'leye_image': leye_image, 'reye_image': reye_image}
         return sample

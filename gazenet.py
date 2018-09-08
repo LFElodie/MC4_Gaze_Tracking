@@ -25,6 +25,7 @@ class GazeNet(nn.Module):
         super(GazeNet, self).__init__()
         self.face_net = resnext50(4,32)
         self.eye_net = resnext50(4,32)
+
     def calc_gaze_lola(self,head,eye):
         head_lo = head[:,0]
         head_la = head[:,1]
@@ -42,15 +43,17 @@ class GazeNet(nn.Module):
         g_y = cB * sD + sB * cC * cD
         g_z = sA * sC * cD + cA * sB * sD - cA * cB * cC * cD
         gaze_lo = torch.atan2(-g_x,-g_z)*180.0/np.pi
-        gaze_la = torch.asin(g_y)*180.0/np.pi
+        gaze_la = -torch.asin(g_y)*180.0/np.pi
         gaze_lo = gaze_lo.unsqueeze(1)
         gaze_la = gaze_la.unsqueeze(1)
         gaze_lola = torch.cat((gaze_lo,gaze_la),1)
         return gaze_lola
-    def forward(self,img_face,img_eye):
+    def forward(self,img_face,img_leye,img_reye):
         return_dict = {}
         head = self.face_net(img_face)
-        eye = self.eye_net(img_eye)
+        leye = self.eye_net(img_leye)
+        reye = self.eye_net(img_reye)
+        eye = (leye + reye) / 2
         #print("head",head.shape)
         #print("eye",eye.shape)
         gaze_lola = self.calc_gaze_lola(head,eye)

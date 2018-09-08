@@ -54,8 +54,10 @@ def output_predict(dataloader,output_path,pretrained_model = None):
                 else:
                     input_data[key] = Variable(input_data[key]).type(torch.FloatTensor)
         img_head = input_data['head_image']
-        img_eye = input_data['eye_image']
-        output = model(img_head,img_eye)
+        img_leye = input_data['leye_image']
+        img_reye = input_data['reye_image']
+
+        output = model(img_head,img_leye,img_reye)
         gaze_lola = output["gaze"].data.cpu().numpy()
         gaze_lola = gaze_lola*180 - 90
         img_name_batch = input_data['img_name']
@@ -71,6 +73,6 @@ def output_predict(dataloader,output_path,pretrained_model = None):
 if __name__ == "__main__":
     test_data_dir = "/data/mc_data/MC4/test"
     output_path = "./pred.txt"
-    model_path = "./ckpt/0.1/train_2000_step.pth"
+    model_path = "./ckpt/0.01/1_epoch.pth"
     test_loader = get_test_loader(test_data_dir)
     output_predict(test_loader,output_path,model_path)
